@@ -14,11 +14,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type Request struct {
+	Detail Detail `json:"detail"`
+}
+
 type Detail struct {
 	Data    Payload `json:"data"`
 	BusName string  `json:"busName"`
 }
-
 
 type Payload struct {
 	UserID     string   `json:"userID"`
@@ -35,18 +38,18 @@ type Payload struct {
 }
 
 type PayloadDB struct {
-	UserID     string   `json:"userID"`
-	CreateDate int      `json:"createDate"`
-	Email      string   `json:"email"`
-	Password   string   `json:"password"`
-	FristName  string   `json:"fristName"`
-	LastName   string   `json:"lastName"`
-	PlantName  string   `json:"plantName"`
-	LineUserId string   `json:"lineUserId"`
-	UserTenan  string   `json:"userTenan"`
-	UserType   string   `json:"userType"`
-	Tel        string   `json:"tel"`
-	IsProduct  []string `json:"isProduct"`
+	UserID     string   `json:"UserID"`
+	CreateDate int      `json:"CreateDate"`
+	Email      string   `json:"Email"`
+	Password   string   `json:"Password"`
+	FristName  string   `json:"FristName"`
+	LastName   string   `json:"LastName"`
+	PlantName  string   `json:"PlantName"`
+	LineUserId string   `json:"LineUserId"`
+	UserTenan  string   `json:"UserTenan"`
+	UserType   string   `json:"UserType"`
+	Tel        string   `json:"Tel"`
+	IsProduct  []string `json:"IsProduct"`
 }
 
 func HashPassword(password string) (string, error) {
@@ -58,14 +61,16 @@ func HashPassword(password string) (string, error) {
 	return string(hashedPassword), nil
 }
 
-func handler(ctx context.Context, req Detail) (string, error) {
+func handler(ctx context.Context, req Request) (string, error) {
 	var TABLENAME = "demo_user_line_id"
 	var REGION = "ap-southeast-1"
 	// var setPayload Payload
 	now := time.Now()
 	ms := now.UnixNano() / int64(time.Millisecond)
-	fmt.Println("req => ", req.Data)
-	hash, err := HashPassword(req.Data.Password)
+	// fmt.Println("req => ", req)
+	// fmt.Println("req Data => ", req.Detail.Data)
+	// fmt.Println("req Data Email => ", req.Detail.Data.Email)
+	hash, err := HashPassword(req.Detail.Data.Password)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,24 +85,27 @@ func handler(ctx context.Context, req Detail) (string, error) {
 	svc := dynamodb.New(sess)
 
 	setPayload := PayloadDB{
-		UserID:     req.Data.UserID,
+		Email:      req.Detail.Data.Email,
+		UserID:     req.Detail.Data.UserID,
 		CreateDate: int(ms),
-		Email:      req.Data.Email,
 		Password:   hash,
-		FristName:  req.Data.FristName,
-		LastName:   req.Data.LastName,
-		PlantName:  req.Data.PlantName,
-		LineUserId: req.Data.LineUserId,
-		UserTenan:  req.Data.UserTenan,
-		UserType:   req.Data.UserType,
-		Tel:        req.Data.Tel,
-		IsProduct:  req.Data.IsProduct,
+		FristName:  req.Detail.Data.FristName,
+		LastName:   req.Detail.Data.LastName,
+		PlantName:  req.Detail.Data.PlantName,
+		LineUserId: req.Detail.Data.LineUserId,
+		UserTenan:  req.Detail.Data.UserTenan,
+		UserType:   req.Detail.Data.UserType,
+		Tel:        req.Detail.Data.Tel,
+		IsProduct:  req.Detail.Data.IsProduct,
 	}
+	// fmt.Println("setPayload => ", setPayload)
 
 	masrhalData, err := dynamodbattribute.MarshalMap(setPayload)
 	if err != nil {
+		fmt.Println("masrhalData err")
 		log.Fatalf("Got error marshalling new movie item: %s", err)
 	}
+	fmt.Println("masrhalData => ", masrhalData)
 
 	input := &dynamodb.PutItemInput{
 		Item:      masrhalData,
@@ -106,6 +114,7 @@ func handler(ctx context.Context, req Detail) (string, error) {
 
 	_, err = svc.PutItem(input)
 	if err != nil {
+		fmt.Println("PutItem err")
 		log.Fatalf("Got error calling PutItem: %s", err)
 	}
 
